@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Appointment Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-button {
+            width: 50px;
+            height: 50px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 18px;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 0;
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .typing-dots {
+            display: inline-block;
+        }
+
+        .typing-dots::after {
+            content: '';
+            animation: typing 1.5s infinite;
+        }
+
+        @keyframes typing {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .error-message {
+            background: #ffe6e6 !important;
+            border: 1px solid #ffcccc !important;
+            color: #cc0000 !important;
+        }
+
+        .quick-actions {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-action-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .connected {
+            color: #00aa00;
+        }
+
+        .disconnected {
+            color: #aa0000;
+        }
+
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .message-bubble {
+                max-width: 85%;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator"></div>
+            <h1>🏥 Healthcare Assistant</h1>
+            <p>Book your appointment with AI assistance</p>
+        </div>
+
+        <div class="connection-status" id="connectionStatus">
+            <span class="connected">● Connected to appointment system</span>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    <div>👋 Hello! I'm your appointment scheduling assistant. I'm here to help you book your medical appointment quickly and easily.</div>
+                    <div class="message-time">Now</div>
+                </div>
+            </div>
+            <div class="message bot">
+                <div class="message-bubble">
+                    <div>To get started, please tell me your name and what type of appointment you'd like to schedule. 😊</div>
+                    <div class="message-time">Now</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <div class="quick-action-btn" onclick="sendQuickMessage('I need a general checkup')">
+                🩺 General Checkup
+            </div>
+            <div class="quick-action-btn" onclick="sendQuickMessage('I need a specialist consultation')">
+                👨‍⚕️ Specialist Visit
+            </div>
+            <div class="quick-action-btn" onclick="sendQuickMessage('What times are available today?')">
+                🕐 Check Availability
+            </div>
+            <div class="quick-action-btn" onclick="sendQuickMessage('This is urgent')">
+                🚨 Urgent Care
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            Bot is typing<span class="typing-dots"></span>
+        </div>
+
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <input 
+                    type="text" 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="Type your message here..." 
+                    autocomplete="off"
+                    maxlength="500"
+                >
+                <button type="submit" class="send-button" id="sendButton">
+                    ➤
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        class AppointmentBot {
+            constructor() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.chatInput = document.getElementById('chatInput');
+                this.chatForm = document.getElementById('chatForm');
+                this.sendButton = document.getElementById('sendButton');
+                this.typingIndicator = document.getElementById('typingIndicator');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                
+                // Configuration
+                this.apiUrl = 'http://localhost:5000';
+                this.isConnected = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.chatForm.addEventListener('submit', (e) => this.handleSubmit(e));
+                this.chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSubmit(e);
+                    }
+                });
+
+                // Check connection
+                this.checkConnection();
+                
+                // Auto-focus input
+                this.chatInput.focus();
+            }
+
+            async checkConnection() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/health`);
+                    if (response.ok) {
+                        this.isConnected = true;
+                        this.updateConnectionStatus('Connected to appointment system', 'connected');
+                    } else {
+                        throw new Error('Server responded with error');
+                    }
+                } catch (error) {
+                    this.isConnected = false;
+                    this.updateConnectionStatus('Using demo mode - Connect your backend server', 'disconnected');
+                }
+            }
+
+            updateConnectionStatus(message, className) {
+                this.connectionStatus.innerHTML = `<span class="${className}">● ${message}</span>`;
+            }
+
+            async handleSubmit(e) {
+                e.preventDefault();
+                const message = this.chatInput.value.trim();
+                
+                if (!message) return;
+
+                // Add user message
+                this.addMessage(message, 'user');
+                this.chatInput.value = '';
+                this.setLoading(true);
+
+                try {
+                    const response = await this.sendMessage(message);
+                    this.addMessage(response, 'bot');
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.addMessage(
+                        `I apologize, but I'm having trouble connecting to the appointment system. ${this.isConnected ? 'Please try again in a moment.' : 'Please make sure the backend server is running on localhost:5000.'}`, 
+                        'bot', 
+                        true
+                    );
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async sendMessage(message) {
+                if (!this.isConnected) {
+                    // Demo responses when backend is not available
+                    return this.getDemoResponse(message);
+                }
+
+                const response = await fetch(`${this.apiUrl}/test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.response || 'I apologize, but I didn\'t receive a proper response. Please try again.';
+            }
+
+            getDemoResponse(message) {
+                // Simple demo responses when backend is not connected
+                const msg = message.toLowerCase();
+                
+                if (msg.includes('name') || msg.includes('hello') || msg.includes('hi')) {
+                    return "Hello! I'd be happy to help you schedule an appointment. Could you please tell me your full name?";
+                } else if (msg.includes('john') || msg.includes('name is')) {
+                    return "Nice to meet you! What type of appointment would you like to schedule? (checkup, consultation, follow-up, etc.)";
+                } else if (msg.includes('checkup') || msg.includes('consultation')) {
+                    return "Great! I can help you with that. What's your preferred date and time? Also, please provide your email address for confirmation.";
+                } else if (msg.includes('@')) {
+                    return "Perfect! I have your email. What date would work best for you? We have availability throughout the week.";
+                } else if (msg.includes('urgent')) {
+                    return "I understand this is urgent. Let me check our emergency appointment slots. Please provide your name and contact information.";
+                } else if (msg.includes('available') || msg.includes('time')) {
+                    return "Here are our available time slots for this week:\n• Monday: 9:00 AM, 2:00 PM, 4:00 PM\n• Tuesday: 10:00 AM, 1:00 PM, 3:00 PM\n• Wednesday: 9:00 AM, 11:00 AM, 2:00 PM\n\nWhich slot works for you?";
+                } else {
+                    return "I understand. To help you better, could you please provide more details about what you need? I can assist with scheduling appointments, checking availability, or answering questions about our services.";
+                }
+            }
+
+            addMessage(text, sender, isError = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+                
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = `message-bubble ${isError ? 'error-message' : ''}`;
+                
+                const textDiv = document.createElement('div');
+                textDiv.textContent = text;
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                bubbleDiv.appendChild(textDiv);
+                bubbleDiv.appendChild(timeDiv);
+                messageDiv.appendChild(bubbleDiv);
+                
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            setLoading(loading) {
+                this.sendButton.disabled = loading;
+                this.chatInput.disabled = loading;
+                
+                if (loading) {
+                    this.typingIndicator.style.display = 'block';
+                    this.sendButton.textContent = '⏳';
+                } else {
+                    this.typingIndicator.style.display = 'none';
+                    this.sendButton.textContent = '➤';
+                    this.chatInput.focus();
+                }
+                
+                this.scrollToBottom();
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+                }, 100);
+            }
+        }
+
+        function sendQuickMessage(message) {
+            const chatInput = document.getElementById('chatInput');
+            chatInput.value = message;
+            document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+        }
+
+        // Initialize the bot when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.appointmentBot = new AppointmentBot();
+        });
+
+        // Add some keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + / to focus input
+            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                document.getElementById('chatInput').focus();
+            }
+        });
+    </script>
+</body>
+</html>
